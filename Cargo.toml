@@ -1,0 +1,17 @@
+[package]
+name = "s-onnx-compiler"
+version = "0.1.0"
+edition = "2021"
+description = "S-ONNX-COMPILER"
+authors = ["TapirHeron"]
+
+[dependencies]
+thiserror = "1.0"
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+itertools = "0.12.0"
+unicode-xid = "0.2"
+
+[dev-dependencies]
+assert_matches = "1.5"
+pretty_assertions = "1.0"
