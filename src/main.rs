@@ -1,72 +1,73 @@
-use clap::Parser;
-use s_onnx_compiler::*;
-use std::process;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about = "S-ONNX Compiler - 编译原理实验", long_about = None)]
-struct Args {
-    /// S-ONNX源码文件路径
-    input: String,
-    /// 三地址码输出文件路径
-    #[arg(short, long)]
-    output: Option<String>,
-    /// 打印抽象语法树(AST)
-    #[arg(short, long)]
-    print_ast: bool,
-    /// 仅执行词法分析
-    #[arg(long)]
-    only_lex: bool,
-    /// 仅执行词法+语法分析
-    #[arg(long)]
-    only_parse: bool,
-}
+use s_onnx_compiler::{lexer, parser, semantic, codegen};
+use std::fs;
+use s_onnx_compiler::CompilerError;
 
-fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
-    println!("=== S-ONNX Compiler 开始编译: {} ===", args.input);
+fn main() -> Result<(), CompilerError> {
+    // ==============================
+    // 直接读取你的测试用例文件
+    // ==============================
+    let path = "test.txt"; // 把你的 ModelProto 测试用例保存为 test.txt
+    let source = fs::read_to_string(path)
+        .map_err(|_| CompilerError::FileOpen(path.into()))?;
 
+    println!("==================================");
+    println!("  S-ONNX 编译器开始运行");
+    println!("==================================");
+
+    // ==============================
     // 1. 词法分析
-    let mut scanner = lexer::Scanner::new_from_file(&args.input)?;
-    if args.only_lex {
-        println!("✅ 词法分析结果:");
-        loop {
-            let token = scanner.next_token()?;
-            println!("{}", token);
-            if token == lexer::Token::Eof {
-                break;
-            }
-        }
-        process::exit(0);
-    }
+    // ==============================
+    println!("\n[1/4] 词法分析...");
+    let mut scanner = lexer::Scanner::new(&source, path);
+    let mut tokens = Vec::new();
 
+    loop {
+        let token = scanner.next_token()?;
+        if token == lexer::Token::Eof {
+            break;
+        }
+        tokens.push(token.clone());
+        println!("  {}", token);
+    }
+    println!("✅ 词法分析完成，共 {} 个Token", tokens.len());
+
+    // ==============================
     // 2. 语法分析
+    // ==============================
+    println!("\n[2/4] 语法分析...");
+    let mut scanner = lexer::Scanner::new(&source, path);
     let mut parser = parser::Parser::new(scanner);
     let ast = parser.parse()?;
-    println!("✅ 语法分析完成，AST构建成功");
-    if args.print_ast {
-        utils::print::print_ast(&ast);
-    }
-    if args.only_parse {
-        process::exit(0);
-    }
+    println!("✅ 语法分析完成，AST 构建成功");
 
-    // 3. 语义分析
-    let mut checker = semantic::SemanticChecker::new(ast);
+    // 打印 AST
+    println!("\n=== 抽象语法树 AST ===");
+    ast.print(0);
+
+    // ==============================
+    // 3. 语义检查
+    // ==============================
+    println!("\n[3/4] 语义检查...");
+    let mut checker = semantic::SemanticChecker::new(ast.clone());
     let checked_ast = checker.check()?;
     println!("✅ 语义检查通过");
 
-    // 4. 中间代码生成
+    // ==============================
+    // 4. 三地址码生成
+    // ==============================
+    println!("\n[4/4] 三地址码生成...");
     let mut codegen = codegen::CodeGenerator::new(checked_ast);
-    let tac = codegen.generate()?;
-    println!("✅ 三地址码(TAC)生成完成");
+    let tac_list = codegen.generate()?;
 
-    // 打印并保存TAC
-    utils::print::print_tac(&tac);
-    if let Some(out_path) = args.output {
-        utils::file::save_tac(&tac, &out_path)?;
-        println!("✅ TAC已保存至: {}", out_path);
+    println!("\n=== 生成的三地址码 TAC ===");
+    for inst in tac_list {
+        println!("{}", inst);
     }
 
-    println!("=== 编译完成 ===");
+    println!("\n==================================");
+    println!("  编译全部完成 ✅");
+    println!("==================================");
+
     Ok(())
 }

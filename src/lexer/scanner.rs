@@ -17,7 +17,7 @@ impl Scanner {
     pub fn new_from_file(path: &str) -> Result<Self, LexError> {
         let content = read_to_string(path)
             .map_err(|e| LexError::FileError(format!("{}: {}", path, e)))?;
-        let static_path = Box::leak(path.into_boxed_str());
+        let static_path = Box::leak(String::from(path).into_boxed_str());
         Ok(Self::new(&content, static_path))
     }
 
@@ -145,27 +145,28 @@ impl Scanner {
         })
     }
 
-    /// 读取整数 - 遵循文档正则: (0 | [1-9][0-9]*) [lL]?
+    /// 读取整数 (0 | [1-9][0-9]*) [lL]?
     fn read_integer(&mut self) -> Result<Token, LexError> {
         let start = self.pos;
         let first = self.peek();
 
-        // 处理0开头的情况
+        // 处理 0 开头的情况
         if first == '0' {
             self.consume();
-            // 0后面不能跟数字
+            // 如果 0 后面还跟着数字，则是无效的（如 01, 02）
+            // 但如果 0 后面是 L/l 后缀或者非数字字符，则是有效的
             if !self.is_eof() && self.peek().is_ascii_digit() {
                 let s: String = self.source[start..self.pos].iter().collect();
                 return Err(LexError::InvalidInteger(s, self.pos()));
             }
         } else {
-            // 非0开头，必须是1-9后跟任意数字
+            // 非 0 开头，必须是 1-9 后跟任意数字
             while !self.is_eof() && self.peek().is_ascii_digit() {
                 self.consume();
             }
         }
 
-        // 处理可选的L/l后缀
+        // 处理可选的 L/l 后缀
         if !self.is_eof() && matches!(self.peek(), 'l' | 'L') {
             self.consume();
         }
@@ -175,11 +176,9 @@ impl Scanner {
             .map_err(|_| LexError::InvalidInteger(s, self.pos()))?;
         Ok(Token::Integer(num))
     }
-
     /// 读取字符串 - 遵循文档正则: "(ESCAPE_SEQUENCE | (~\\|~"))*"
     fn read_string(&mut self) -> Result<Token, LexError> {
         self.consume(); // 跳过开头的"
-        let start = self.pos;
         let mut content = String::new();
 
         while !self.is_eof() && self.peek() != '"' {

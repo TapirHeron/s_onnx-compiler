@@ -5,6 +5,8 @@ use crate::{lexer::LexError, parser::ParseError, semantic::SemanticError, codege
 
 #[derive(Error, Debug)]
 pub enum CompilerError {
+    #[error("文件打开错误: {0}")]
+    FileOpen(String),
     #[error("词法错误: {0}")]
     Lex(#[from] LexError),
     #[error("语法错误: {0}")]

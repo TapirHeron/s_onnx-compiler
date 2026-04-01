@@ -21,7 +21,7 @@ impl SemanticChecker {
 
     /// 执行语义检查
     pub fn check(&mut self) -> Result<AST, SemanticError> {
-        self.visit_ast(&self.ast);
+        self.visit_ast(&self.ast.clone());
         if !self.errors.is_empty() {
             return Err(self.errors.remove(0));
         }
@@ -103,7 +103,7 @@ impl SemanticChecker {
 
             // 检查3: 同一操作符输入类型一致
             if input_types.len() > 1 && inputs.len() >= 2 {
-                let mut types = input_types.into_iter().collect::<Vec<_>>();
+                let types = input_types.into_iter().collect::<Vec<_>>();
                 self.errors.push(SemanticError::OpInputTypeMismatch(
                     op_type.clone(),
                     inputs[0].clone(),

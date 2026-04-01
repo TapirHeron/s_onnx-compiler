@@ -308,7 +308,7 @@ doc_string = "This is testmodel10."
     assert!(result.is_err(), "应该检测到语法错误");
     match result.err().unwrap() {
         ParseError::MissingSymbol(sym, _) => {
-            assert_eq!(sym, "}", "错误信息应提示缺少}");
+            assert_eq!(sym, "}", "错误信息应提示缺少}}");
         }
         ParseError::UnexpectedToken(token, _) => {
             assert_eq!(token, Token::OpsetImport, "应该在opset_import处检测到意外Token");
@@ -328,7 +328,7 @@ producer_name = "onnx-example"
 producer_version = "1.0"
 domain = "example_domain"
 model_version = 1
-doc_string = "This is an example ONNX model.  // 未闭合字符串
+doc_string = "This is an example ONNX model.
 graph {
    name= "test-model"
 }"#;
