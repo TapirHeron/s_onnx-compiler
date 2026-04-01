@@ -36,7 +36,7 @@ fn main() -> Result<(), CompilerError> {
     // 2. 语法分析
     // ==============================
     println!("\n[2/4] 语法分析...");
-    let mut scanner = lexer::Scanner::new(&source, path);
+    let scanner = lexer::Scanner::new(&source, path);
     let mut parser = parser::Parser::new(scanner);
     let ast = parser.parse()?;
     println!("✅ 语法分析完成，AST 构建成功");

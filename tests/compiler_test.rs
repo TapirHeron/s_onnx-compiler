@@ -7,105 +7,106 @@ use s_onnx_compiler::semantic::SemanticError;
 // 测试用例1: 官方测试用例1完整解析
 #[test]
 fn test_official_test_case1() {
-    let source = r#"ModelProto{
-ir_version = 8
-producer_name = "onnx-example"
-producer_version = "1.0"
-domain = "example_domain"
-model_version = 1
-doc_string = "This is an example ONNX model."
-graph {
-   name= "test-model"
-   node {
-op_type= "Pad"
-name= "test-node"
-input=["X","pads","value"]
-      output=[ "Y" ]
-      attribute {
-        name= "mode"
-        value = "33"
-      }
-   }
-   input {
-      name= "X"
-      type {
-        tensor_type {
-          elem_type= int
-          shape {
-            dim {
-              dim_value= 3
+    let source =
+    r#"ModelProto {
+        ir_version = 8
+        producer_name = "onnx-example"
+        producer_version = "1.0"
+        domain = "example_domain"
+        model_version = 1
+        doc_string = "This is an example ONNX model."
+        graph {
+            name= "test-model"
+            node {
+                op_type= "Pad"
+                name= "test-node"
+                input=["X","pads","value"]
+                output=[ "Y" ]
+                attribute {
+                    name= "mode"
+                    value = "33"
+                }
             }
-            dim {
-             dim_value= 2
-           }
-         }
-       }
-     }
-   }
-   input {
-     name="pads"
-     type {
-       tensor_type {
-         elem_type= int
-         shape {
-            dim {
-              dim_value= 1
+            input {
+                name= "X"
+                type {
+                    tensor_type {
+                        elem_type= int
+                            shape {
+                                dim {
+                                    dim_value= 3
+                                }
+                                dim {
+                                    dim_value= 2
+                                }
+                            }
+                        }
+                    }
+                }
+            input {
+                name="pads"
+                type {
+                    tensor_type {
+                        elem_type= int
+                        shape {
+                            dim {
+                                dim_value= 1
+                            }
+                            dim {
+                                dim_value= 4
+                            }
+                        }
+                    }
+                }
             }
-           dim {
-             dim_value= 4
-           }
-         }
-       }
-      }
-   }
-   input {
-     name= "value"
-     type {
-        tensor_type {
-          elem_type= int
-          shape {
-            dim {
-              dim_value= 1
+            input {
+                name= "value"
+                type {
+                    tensor_type {
+                        elem_type= int
+                        shape {
+                            dim {
+                                dim_value= 1
+                            }
+                        }
+                    }
+                }
             }
-          }
+            output {
+                name="Y"
+                type {
+                    tensor_type {
+                        elem_type= int
+                        shape {
+                            dim {
+                                dim_value=3
+                            }
+                            dim {
+                                dim_value=4
+                            }
+                        }
+                    }
+                }
+            }
+            initializer {
+                name= "conv.bias"
+                data_type=int
+                dims=1 2 3 4
+                raw_data=000000000000b
+            }
         }
-     }
-   }
-   output {
-     name="Y"
-     type {
-        tensor_type {
-          elem_type= int
-          shape {
-            dim {
-              dim_value=3
-            }
-            dim {
-              dim_value=4
-            }
-          }
+        opset_import {
+            domain = "ex"
+            version=15
         }
-     }
-    }
-initializer {
-name= "conv.bias"
-      data_type=int
-dims=1 2 3 4
-      raw_data=000000000000b
-   }
-}
-opset_import {
-domain = "ex"
-    version=15
-}
-}"#;
+    }"#;
 
     // 1. 词法分析
     let mut scanner = lexer::Scanner::new(source, "test_case1.txt");
     let mut tokens = Vec::new();
     loop {
         let token = scanner.next_token().unwrap();
-        if token == lexer::Token::Eof {
+        if token == Token::Eof {
             break;
         }
         tokens.push(token);
@@ -150,7 +151,7 @@ domain = "ex"
     let mut codegen = codegen::CodeGenerator::new(checked_ast);
     let tac = codegen.generate().expect("TAC生成失败");
     assert!(!tac.is_empty(), "未生成任何TAC指令");
-
+    println!("{:?}", tac);
     // 验证TAC指令类型
     let mut has_input = false;
     let mut has_operation = false;
@@ -284,9 +285,9 @@ fn test_syntax_error_missing_symbol() {
     producer_name = "TestProducer"
     producer_version = "1.0"
     domain = "test.onnx"
-model_version = 1
-doc_string = "This is testmodel10."
-    graph{
+    model_version = 1
+    doc_string = "This is testmodel10."
+    graph {
         name = "SyntaxErrorGraph"
         node{
             op_type = "Add"
@@ -294,7 +295,6 @@ doc_string = "This is testmodel10."
             input = ["input1", "input2"]
             output = ["output1"]
         }
-    // 缺少graph的闭合}
     opset_import{
         domain = "ai.onnx"
         version = 11
@@ -308,7 +308,7 @@ doc_string = "This is testmodel10."
     assert!(result.is_err(), "应该检测到语法错误");
     match result.err().unwrap() {
         ParseError::MissingSymbol(sym, _) => {
-            assert_eq!(sym, "}", "错误信息应提示缺少}}");
+            assert_eq!(Token::RCurly, sym, "错误信息应提示缺少}}");
         }
         ParseError::UnexpectedToken(token, _) => {
             assert_eq!(token, Token::OpsetImport, "应该在opset_import处检测到意外Token");
@@ -323,15 +323,16 @@ doc_string = "This is testmodel10."
 #[test]
 fn test_lex_error_unclosed_string() {
     let source = r#"ModelProto{
-ir_version = 8
-producer_name = "onnx-example"
-producer_version = "1.0"
-domain = "example_domain"
-model_version = 1
-doc_string = "This is an example ONNX model.
-graph {
-   name= "test-model"
-}"#;
+        ir_version = 8
+        producer_name = "onnx-example"
+        producer_version = "1.0"
+        domain = "example_domain"
+        model_version = 1
+        doc_string = "This is an example ONNX model."
+        graph {
+           name= "test-model"
+        }
+    }"#;
 
     // 词法分析应该报错(未闭合字符串)
     let mut scanner = lexer::Scanner::new(source, "lex_error_test.txt");
@@ -350,6 +351,7 @@ graph {
             }
         }
     }
+    println!("tokens: {:?}", tokens);
     assert!(has_error, "应该检测到未闭合字符串的词法错误");
 
     println!("✅ 词法错误-未闭合字符串测试通过!");

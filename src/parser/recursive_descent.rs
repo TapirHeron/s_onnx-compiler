@@ -198,8 +198,10 @@ impl Parser {
             None
         };
 
-        self.expect(Token::RCurly)?;
-
+        let r_curly_result = self.expect(Token::RCurly);
+        if r_curly_result.is_err() {
+            return Err(ParseError::MissingSymbol(Token::RCurly, self.pos()));
+        }
         Ok(AST::Graph {
             name,
             nodes,
@@ -559,4 +561,5 @@ impl Parser {
         self.expect(Token::Equal)?;
         self.expect_integer()
     }
+
 }

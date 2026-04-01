@@ -42,7 +42,7 @@ impl Scanner {
         let c = self.peek();
         match c {
             'a'..='z' | 'A'..='Z' | '_' => self.read_identifier_or_keyword(),
-            '0'..='9' => self.read_integer(),
+            '0'..='9' => self.read_integer_or_bytes(),
             '"' => self.read_string(),
             '[' => self.consume_and_return(Token::LBracket),
             ']' => self.consume_and_return(Token::RBracket),
@@ -101,7 +101,7 @@ impl Scanner {
     /// 读取标识符或关键字 - 关键字不区分大小写
     fn read_identifier_or_keyword(&mut self) -> Result<Token, LexError> {
         let start = self.pos;
-        while !self.is_eof() && (self.peek().is_alphanumeric() || self.peek() == '_') {
+        while !self.is_eof() && (self.peek().is_alphanumeric() || self.peek() == '_' || self.peek() == '-') {
             self.consume();
         }
         let s: String = self.source[start..self.pos].iter().collect();
@@ -145,25 +145,34 @@ impl Scanner {
         })
     }
 
-    /// 读取整数 (0 | [1-9][0-9]*) [lL]?
-    fn read_integer(&mut self) -> Result<Token, LexError> {
+    /// 读取整数或字节数据 (0 | [1-9][0-9]*) [lL]?
+    fn read_integer_or_bytes(&mut self) -> Result<Token, LexError> {
         let start = self.pos;
         let first = self.peek();
+        let start_pos = self.pos();
 
         // 处理 0 开头的情况
         if first == '0' {
             self.consume();
-            // 如果 0 后面还跟着数字，则是无效的（如 01, 02）
-            // 但如果 0 后面是 L/l 后缀或者非数字字符，则是有效的
-            if !self.is_eof() && self.peek().is_ascii_digit() {
-                let s: String = self.source[start..self.pos].iter().collect();
-                return Err(LexError::InvalidInteger(s, self.pos()));
-            }
-        } else {
-            // 非 0 开头，必须是 1-9 后跟任意数字
-            while !self.is_eof() && self.peek().is_ascii_digit() {
+
+            // 检查是否有 L/l 后缀
+            if !self.is_eof() && matches!(self.peek(), 'l' | 'L') {
                 self.consume();
+                return Ok(Token::Integer(0));
             }
+
+            // 如果 0 后面还跟着数字，尝试匹配字节数据（如 01b, 02b）
+            if !self.is_eof() && self.peek().is_ascii_digit() {
+                return self.read_bytes(start);
+            }
+
+            // 单独的 0 是合法的
+            return Ok(Token::Integer(0));
+        }
+
+        // 非 0 开头，必须是 1-9 后跟任意数字
+        while !self.is_eof() && self.peek().is_ascii_digit() {
+            self.consume();
         }
 
         // 处理可选的 L/l 后缀
@@ -173,7 +182,7 @@ impl Scanner {
 
         let s: String = self.source[start..self.pos].iter().collect();
         let num = s.parse()
-            .map_err(|_| LexError::InvalidInteger(s, self.pos()))?;
+            .map_err(|_| LexError::InvalidInteger(s.clone(), start_pos))?;
         Ok(Token::Integer(num))
     }
     /// 读取字符串 - 遵循文档正则: "(ESCAPE_SEQUENCE | (~\\|~"))*"
@@ -217,10 +226,12 @@ impl Scanner {
         Ok(Token::StringLit(content))
     }
 
-    /// 读取字节数据 - 遵循文档正则: [0-9A-Fa-f]+b
-    fn read_bytes(&mut self) -> Result<Token, LexError> {
-        let start = self.pos;
+    /// 读取字节数据 [0-9A-Fa-f]+b
+    fn read_bytes(&mut self, start: usize) -> Result<Token, LexError> {
         while !self.is_eof() && self.peek().is_ascii_hexdigit() {
+            if self.peek() == 'b' {
+                break;
+            }
             self.consume();
         }
 

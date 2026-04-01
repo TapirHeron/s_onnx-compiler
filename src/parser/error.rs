@@ -23,7 +23,7 @@ pub enum ParseError {
     ExpectedDataType(Token, Position),
 
     #[error("语法结构不完整: 缺少{0} @ {1}")]
-    MissingSymbol(&'static str, Position),
+    MissingSymbol(Token, Position),
 
     #[error("意外的Token: {0:?} @ {1}")]
     UnexpectedToken(Token, Position),
