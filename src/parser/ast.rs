@@ -95,11 +95,25 @@ impl AST {
     pub fn print(&self, indent: usize) {
         let indent_str = "  ".repeat(indent);
         match self {
-            AST::ModelProto { ir_version, producer_name, graph, .. } => {
+            AST::ModelProto {
+                ir_version,
+                producer_name,
+                producer_version,
+                domain,
+                model_version,
+                doc_string,
+                graph,
+                opset_import,
+            ..} => {
                 println!("{}ModelProto {{", indent_str);
                 println!("{}  ir_version: {}", indent_str, ir_version);
                 println!("{}  producer_name: \"{}\"", indent_str, producer_name);
+                println!("{}  producer_version: \"{}\"", indent_str, producer_version);
+                println!("{}  domain: \"{}\"", indent_str, domain);
+                println!("{}  model_version: \"{}\"", indent_str, model_version);
+                println!("{}  doc_string: \"{}\"", indent_str, doc_string);
                 graph.print(indent + 2);
+                opset_import.print(indent + 2);
                 println!("{}}}", indent_str);
             }
             AST::Graph { name, nodes, inputs, outputs, initializers, .. } => {
@@ -145,6 +159,12 @@ impl AST {
                 if let Some(p) = dim_param {
                     println!("{}  dim_param: \"{}\"", indent_str, p);
                 }
+                println!("{}}}", indent_str);
+            }
+            AST::OpsetImport { domain, version, ..} => {
+                println!("{}OpsetImport {{", indent_str);
+                println!("{}  domain: \"{}\"", indent_str, domain);
+                println!("{}  version: {}", indent_str, version);
                 println!("{}}}", indent_str);
             }
             _ => println!("{}{:?}", indent_str, self),

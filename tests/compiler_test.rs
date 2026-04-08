@@ -150,7 +150,9 @@ fn test_official_test_case1() {
     // 4. 代码生成
     let mut codegen = codegen::CodeGenerator::new(checked_ast);
     let tac = codegen.generate().expect("TAC生成失败");
-    println!("{:?}", tac);
+    for inst in &tac {
+        println!("{:?}", inst);
+    }
     assert!(!tac.is_empty(), "未生成任何TAC指令");
     // 验证TAC指令类型
     let mut has_input = false;
