@@ -165,6 +165,7 @@ fn test_official_test_case1() {
             TAC::Operation { .. } => has_operation = true,
             TAC::Initializer { .. } => has_initializer = true,
             TAC::Output { .. } => has_output = true,
+            TAC::Comment(_) => todo!(),
         }
     }
     assert!(has_input, "缺少Input类型TAC指令");

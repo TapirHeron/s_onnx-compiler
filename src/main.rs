@@ -1,8 +1,8 @@
-use s_onnx_compiler::{lexer, parser, semantic, codegen};
+use s_onnx_compiler::{lexer, parser, semantic, codegen, utils};
 use std::fs;
 use std::path::Path;
 use s_onnx_compiler::CompilerError;
-
+use utils::file;
 fn main() -> Result<(), CompilerError> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -93,23 +93,24 @@ fn main() -> Result<(), CompilerError> {
     // 保存三地址码到文件
     if stage == "codegen" {
         let output_path = if output_file.is_empty() {
-            // 未指定输出文件，默认保存到源文件同目录下
             let path = Path::new(file_path);
             let file_stem = path.file_stem()
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_else(|| "output".to_string());
-            if let Some(parent) = path.parent() {
-                format!("{}/{}.tac", parent.display(), file_stem)
-            } else {
-                format!("{}.tac", file_stem)
-            }
+
+            // 使用 PathBuf 自动保留原目录，只替换文件名
+            let mut output = path.to_path_buf();
+            output.set_file_name(format!("{}.tac", file_stem));
+            output.to_string_lossy().to_string()
         } else {
             output_file
         };
 
-        fs::write(&output_path, tac_content.join("\n"))
-            .map_err(|e| CompilerError::FileOpen(format!("无法写入文件 {}: {}", output_path, e)))?;
-        println!("\n✅ 三地址码已保存到: {}", output_path);
+
+        match file::save_tac(&tac_list, &output_path) {
+            Ok(_) => println!("\n✅ 三地址码已保存到: {}", output_path),
+            Err(e) => eprintln!("\n❌ 保存失败: {}", e),
+        }
     }
 
     println!("\n==================================");

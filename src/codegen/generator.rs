@@ -1,38 +1,5 @@
-use crate::{
-    error::{CompilerError, Position},
-    parser::AST,
-};
-use std::fmt;
+use crate::{error::CompilerError, parser::AST, TAC};
 use crate::codegen::CodeGenError;
-
-// ============================================
-// 🔥 TAC 定义：完全匹配你测试用的 API！
-// ============================================
-#[derive(Debug, Clone, PartialEq)]
-pub enum TAC {
-    Input {
-        name: String,
-        ty: String,
-        shape: Vec<usize>,
-        pos: Position,
-    },
-    Initializer {
-        name: String,
-        value: Vec<f64>,
-        shape: Vec<usize>,
-        pos: Position,
-    },
-    Operation {
-        op: String,
-        inputs: Vec<String>,
-        outputs: Vec<String>,
-        pos: Position,
-    },
-    Output {
-        name: String,
-        pos: Position,
-    },
-}
 
 // ============================================
 // 代码生成器核心类
@@ -41,24 +8,36 @@ pub enum TAC {
 pub struct CodeGenerator {
     ast: AST,
     instructions: Vec<TAC>,
+    temp_counter: usize,
 }
 
 impl CodeGenerator {
-    /// 完全匹配你的调用：CodeGenerator::new(checked_ast)
+    /// 创建代码生成器
     pub fn new(ast: AST) -> Self {
         Self {
             ast,
             instructions: Vec::new(),
+            temp_counter: 1,
         }
     }
 
-    /// 完全匹配你的调用：codegen.generate() -> Result<Vec<TAC>, CompilerError>
+    /// 生成三地址码
     pub fn generate(&mut self) -> Result<Vec<TAC>, CompilerError> {
         self.visit_model(&self.ast.clone())?;
         Ok(self.instructions.clone())
     }
 
-    // 遍历 ModelProto
+    /// 生成临时变量名
+    fn gen_temp(&mut self) -> String {
+        let name = format!("T{}", self.temp_counter);
+        self.temp_counter += 1;
+        name
+    }
+
+    // ============================================
+    // AST 遍历方法
+    // ============================================
+
     fn visit_model(&mut self, ast: &AST) -> Result<(), CompilerError> {
         if let AST::ModelProto { graph, .. } = ast {
             self.visit_graph(graph)?;
@@ -66,28 +45,27 @@ impl CodeGenerator {
         Ok(())
     }
 
-    // 遍历 Graph → 生成 Input / Initializer / Node / Output
     fn visit_graph(&mut self, graph: &AST) -> Result<(), CompilerError> {
         match graph {
             AST::Graph { inputs, initializers, nodes, outputs, .. } => {
-                // 1. 生成 Input TAC
+                // 1. 输入张量定义
                 for input in inputs {
                     self.visit_input(input)?;
                 }
 
-                // 2. 生成 Initializer TAC
+                // 2. 权重初始化
                 if let Some(inits) = initializers {
                     for init in inits {
                         self.visit_initializer(init)?;
                     }
                 }
 
-                // 3. 生成 Operation TAC（算子）
+                // 3. 算子执行
                 for node in nodes {
                     self.visit_node(node)?;
                 }
 
-                // 4. 生成 Output TAC
+                // 4. 输出张量定义
                 for output in outputs {
                     self.visit_output(output)?;
                 }
@@ -100,26 +78,28 @@ impl CodeGenerator {
         Ok(())
     }
 
-    // 生成 Input 指令
+    // 生成 Input 指令: T0 = Input("X", int, [3, 2])
     fn visit_input(&mut self, input: &AST) -> Result<(), CompilerError> {
         match input {
-            AST::ValueInfo { name, elem_type, shape, pos } => {
-                // 将 Vec<AST> (Dim) 转换为 Vec<usize>
-                let dim_values: Vec<usize> = shape.iter()
+            AST::ValueInfo { name, elem_type, shape, .. } => {
+                let result = self.gen_temp();
+                let dim_values: Vec<String> = shape.iter()
                     .filter_map(|dim| {
                         if let AST::Dim { dim_value: Some(v), .. } = dim {
-                            Some(*v as usize)
+                            Some(v.to_string())
+                        } else if let AST::Dim { dim_param: Some(p), .. } = dim {
+                            Some(p.clone())
                         } else {
                             None
                         }
                     })
                     .collect();
-                
+
                 self.instructions.push(TAC::Input {
+                    result,
                     name: name.clone(),
-                    ty: elem_type.clone(),
+                    data_type: elem_type.clone(),
                     shape: dim_values,
-                    pos: pos.clone(),
                 });
             }
             _ => return Err(CompilerError::CodeGen(CodeGenError::ASTNodeTypeError(
@@ -130,23 +110,19 @@ impl CodeGenerator {
         Ok(())
     }
 
-    // 生成 Initializer 指令
+    // 生成 Initializer 指令: T3 = Initializer("conv.bias", int, [1,2,3,4], raw_data=000000000000b)
     fn visit_initializer(&mut self, init: &AST) -> Result<(), CompilerError> {
         match init {
-            AST::Initializer { name, dims, raw_data, pos, .. } => {
-                // 解析 raw_data 字符串为 f64 向量
-                let data: Vec<f64> = raw_data
-                    .split(',')
-                    .filter_map(|s| s.trim().parse::<f64>().ok())
-                    .collect();
-                
-                let shape: Vec<usize> = dims.iter().map(|d| *d as usize).collect();
-                
+            AST::Initializer { name, data_type, dims, raw_data, .. } => {
+                let result = self.gen_temp();
+                let shape = dims.clone();
+
                 self.instructions.push(TAC::Initializer {
+                    result,
                     name: name.clone(),
-                    value: data,
+                    data_type: data_type.clone(),
                     shape,
-                    pos: pos.clone(),
+                    raw_data: format!("row_data={}", raw_data),
                 });
             }
             _ => return Err(CompilerError::CodeGen(CodeGenError::ASTNodeTypeError(
@@ -157,16 +133,34 @@ impl CodeGenerator {
         Ok(())
     }
 
-    // 生成 Operation 指令
+    // 生成 Operation 指令: T4 = Pad T0, T1, T2, [mode=33]
     fn visit_node(&mut self, node: &AST) -> Result<(), CompilerError> {
         match node {
-            AST::Node { op_type, inputs, outputs, pos, .. } => {
-                self.instructions.push(TAC::Operation {
-                    op: op_type.clone(),
-                    inputs: inputs.clone(),
-                    outputs: outputs.clone(),
-                    pos: pos.clone(),
+            AST::Node { op_type, inputs, outputs, attributes, .. } => {
+                // 操作数直接使用输入名称
+                let operands = inputs.clone();
+
+                // 提取属性
+                let attrs: Option<Vec<(String, String)>> = attributes.as_ref().map(|attr_list| {
+                    attr_list.iter().filter_map(|attr| {
+                        if let AST::Attribute { name, value, .. } = attr {
+                            Some((name.clone(), value.clone()))
+                        } else {
+                            None
+                        }
+                    }).collect()
                 });
+
+                // 为每个输出生成操作指令
+                for _output_name in outputs {
+                    let result = self.gen_temp();
+                    self.instructions.push(TAC::Operation {
+                        result,
+                        op_type: op_type.clone(),
+                        operands: operands.clone(),
+                        attributes: attrs.clone(),
+                    });
+                }
             }
             _ => return Err(CompilerError::CodeGen(CodeGenError::ASTNodeTypeError(
                 "Node".to_string(),
@@ -176,13 +170,15 @@ impl CodeGenerator {
         Ok(())
     }
 
-    // 生成 Output 指令
+    // 生成 Output 指令: Output("Y", T4)
     fn visit_output(&mut self, output: &AST) -> Result<(), CompilerError> {
         match output {
-            AST::ValueInfo { name, pos, .. } => {
+            AST::ValueInfo { name, .. } => {
+                // 查找最后一个 Operation 的结果变量
+                let operand = self.find_last_result();
                 self.instructions.push(TAC::Output {
                     name: name.clone(),
-                    pos: pos.clone(),
+                    operand,
                 });
             }
             _ => return Err(CompilerError::CodeGen(CodeGenError::ASTNodeTypeError(
@@ -192,18 +188,14 @@ impl CodeGenerator {
         }
         Ok(())
     }
-}
 
-// 可选：方便调试打印
-impl fmt::Display for TAC {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TAC::Input { name, shape, .. } => write!(f, "INPUT {} {:?}", name, shape),
-            TAC::Initializer { name, shape, .. } => write!(f, "INIT {} {:?}", name, shape),
-            TAC::Operation { op, inputs, outputs, .. } => {
-                write!(f, "OP {} <- {:?} -> {:?}", op, inputs, outputs)
+    /// 查找最后一条 Operation 的结果变量
+    fn find_last_result(&self) -> String {
+        for inst in self.instructions.iter().rev() {
+            if let TAC::Operation { result, .. } = inst {
+                return result.clone();
             }
-            TAC::Output { name, .. } => write!(f, "OUTPUT {}", name),
         }
+        "unknown".to_string()
     }
 }

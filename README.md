@@ -171,25 +171,48 @@ ModelProto {
 ## 文法规则
 
 ```
-model -> "ModelProto" "{" model_body_def "}"
-model_body_def -> ir_version_def producer_name_def producer_version_def 
-                  domain_def model_version_def doc_string_def 
-                  graph_def opset_import_def
-
-graph -> "graph" "{" graph_body_def "}"
-graph_body_def -> name_def node_list input_list output_list [initializer_list]
-
-node -> "node" "{" op_type_def name_def input_arr output_arr [attribute_list] "}"
-
-value_info -> "input"/"output" "{" name_def type_def "}"
-type -> "type" "{" tensor_type_def "}"
-tensor_type -> "tensor_type" "{" elem_type_def shape_def "}"
-shape -> "shape" "{" dim_list "}"
-dim -> "dim" "{" (dim_value = INTEGER) | (dim_param = STRING) "}"
-
-initializer -> "initializer" "{" name_def data_type_def dims_def raw_data_def "}"
-
-opset_import -> "opset_import" "{" domain_def version_def "}"
+G[model]
+model -> “ModelProto”“{”model_body_def “}”
+model_body_def -> ir_version_def producer_name_def producer_version_def domain_def model_version_def  doc_string_def graph_def  opset_import_def
+ir_version_def -> “ir_version” “=” INTEGER
+producer_name_def -> “producer_name” “=” STRING
+producer_version_def -> “producer_version” “=” STRING
+domain_def -> “domain” “=” STRING
+model_version_def -> “model_version” “=” INTEGER
+doc_string_def -> “doc_string” “=” STRING
+graph_def -> “graph” “{” graph_body_def “}”
+graph_body_def -> name_def  node_list  input_list  output_list [initializer_list] 
+name_def -> “name” “=” STRING
+node_list ->  node_repeats {node_repeats}
+node_repeats->“node” “{” node_def “}”
+input_list -> input_repeats {input_repeats}
+input_repeats-> “input” “{” value_info_def  “}”
+output_list ->  output_repeats {output_repeats} 
+output_repeats->“output” “{” value_info_def “}”
+initializer_list->initializer_repeats  {initializer_repeats} 
+initializer_repeats-> “initializer” “{”tensor_def  “}”
+node_def -> op_type_def  name_def  (input_list | input_arr ) (output_list | output_arr)   [attribute_list]
+op_type_def -> “op_type” “=” STRING
+input_arr -> “input”“=”“[”STRING { “,”STRING }“]”
+output_arr -> “output”“=”“[”STRING { “,”STRING }“]”
+attribute_list-> attribute_repeats {attribute_repeats}
+attribute_repeats -> “attribute” “{”attribute_def   “}”
+attribute_def -> name_def  value_def 
+value_def -> “value” “=” STRING
+value_info_def -> name_def  type_def
+type_def -> “type” “{” tensor_type_def “}”
+tensor_type_def -> “tensor_type” “{” elem_type_def  shape_def “}”
+elem_type_def -> “elem_type” “=”  (“int” | “float” | “string” | “bool”)
+shape_def -> “shape” “{” dim_list “}”
+dim_list ->  dim_repeats {dim_repeats}
+dim_repeats -> “dim” “{” dim_def   “}”
+dim_def -> (“dim_value” “=” INTEGER) | (“dim_param” “=” STRING)
+tensor_def -> name_def  data_type_def  dims_def  raw_data_def
+data_type_def -> “data_type” “=” (“int” | “float” | “string” | “bool”)
+dims_def ->  “dims” “=” INTEGER  {INTEGER}
+raw_data_def -> “raw_data” “=” BYTES
+opset_import_def -> “opset_import” “{” domain_def  version_def “}”
+version_def -> “version” “=” INTEGER
 ```
 
 ## 错误处理

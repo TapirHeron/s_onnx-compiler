@@ -1,7 +1,7 @@
 use crate::codegen::TAC;
 use anyhow::Result;
 use std::fs::{read_to_string, write};
-
+pub use file::{read_source, save_tac};
 /// 文件工具 - 读取S-ONNX源码、保存TAC
 pub mod file {
     use super::*;
@@ -13,7 +13,7 @@ pub mod file {
     }
 
     /// 保存三地址码到文件
-    pub fn save_tac(tac: &[TAC], path: &str) -> Result<()> {
+    pub fn save_tac(tac: &Vec<TAC>, path: &str) -> Result<()> {
         let content = tac.iter()
             .map(|inst| inst.to_string())
             .collect::<Vec<_>>()
