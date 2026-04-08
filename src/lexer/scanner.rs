@@ -59,9 +59,9 @@ impl Scanner {
         self.source[self.pos]
     }
 
-    fn peek_next(&self) -> Option<char> {
-        self.source.get(self.pos + 1).copied()
-    }
+    // fn peek_next(&self) -> Option<char> {
+    //     self.source.get(self.pos + 1).copied()
+    // }
 
     fn consume(&mut self) {
         if self.peek() == '\n' {
@@ -73,11 +73,11 @@ impl Scanner {
         self.pos += 1;
     }
 
-    fn consume_n(&mut self, n: usize) {
-        for _ in 0..n {
-            self.consume();
-        }
-    }
+    // fn consume_n(&mut self, n: usize) {
+    //     for _ in 0..n {
+    //         self.consume();
+    //     }
+    // }
 
     fn is_eof(&self) -> bool {
         self.pos >= self.source.len()

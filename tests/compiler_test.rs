@@ -114,7 +114,7 @@ fn test_official_test_case1() {
     assert!(!tokens.is_empty(), "词法分析未生成任何Token");
 
     // 2. 语法分析
-    let mut scanner = lexer::Scanner::new(source, "test_case1.txt");
+    let scanner = lexer::Scanner::new(source, "test_case1.txt");
     let mut parser = parser::Parser::new(scanner);
     let ast = parser.parse().expect("语法分析失败");
 
@@ -150,8 +150,8 @@ fn test_official_test_case1() {
     // 4. 代码生成
     let mut codegen = codegen::CodeGenerator::new(checked_ast);
     let tac = codegen.generate().expect("TAC生成失败");
-    assert!(!tac.is_empty(), "未生成任何TAC指令");
     println!("{:?}", tac);
+    assert!(!tac.is_empty(), "未生成任何TAC指令");
     // 验证TAC指令类型
     let mut has_input = false;
     let mut has_operation = false;
@@ -163,7 +163,6 @@ fn test_official_test_case1() {
             TAC::Operation { .. } => has_operation = true,
             TAC::Initializer { .. } => has_initializer = true,
             TAC::Output { .. } => has_output = true,
-            _ => {}
         }
     }
     assert!(has_input, "缺少Input类型TAC指令");
@@ -258,7 +257,7 @@ output{
 }"#;
 
     // 1. 词法+语法分析通过
-    let mut scanner = lexer::Scanner::new(source, "test_case9.txt");
+    let scanner = lexer::Scanner::new(source, "test_case9.txt");
     let mut parser = parser::Parser::new(scanner);
     let ast = parser.parse().expect("语法分析失败");
 
@@ -302,7 +301,7 @@ fn test_syntax_error_missing_symbol() {
 }"#;
 
     // 语法分析应该报错(缺少}))
-    let mut scanner = lexer::Scanner::new(source, "test_case10.txt");
+    let scanner = lexer::Scanner::new(source, "test_case10.txt");
     let mut parser = parser::Parser::new(scanner);
     let result = parser.parse();
     assert!(result.is_err(), "应该检测到语法错误");
@@ -328,7 +327,7 @@ fn test_lex_error_unclosed_string() {
         producer_version = "1.0"
         domain = "example_domain"
         model_version = 1
-        doc_string = "This is an example ONNX model."
+        doc_string = "This is an example ONNX model.
         graph {
            name= "test-model"
         }
