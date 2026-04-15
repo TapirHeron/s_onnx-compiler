@@ -25,7 +25,7 @@ fn run_test_case(test_name: &str, source: &str) {
                 tokens.push(token.clone());
             }
             Err(e) => {
-                output.push_str(&format!("词法分析错误: {:?}\n", e));
+                output.push_str(&format!("词法分析错误: {}\n", e));
                 save_output(test_name, &output);
                 return;
             }
@@ -64,17 +64,17 @@ fn run_test_case(test_name: &str, source: &str) {
                             }
                         }
                         Err(e) => {
-                            output.push_str(&format!("中间代码生成错误: {:?}\n", e));
+                            output.push_str(&format!("中间代码生成错误: {}\n", e));
                         }
                     }
                 }
                 Err(e) => {
-                    output.push_str(&format!("语义分析错误: {:?}\n", e));
+                    output.push_str(&format!("语义分析错误: {}\n", e));
                 }
             }
         }
         Err(e) => {
-            output.push_str(&format!("语法分析错误: {:?}\n", e));
+            output.push_str(&format!("语法分析错误: {}\n", e));
         }
     }
     
@@ -610,7 +610,7 @@ fn test_case_7() {
     }
     keyword = "value"
 }"#;
-    run_test_case("测试用例7 - 包含非法关键字", source);
+    run_test_case("测试用例7 - 缺少关键字", source);
 }
 
 #[test]
@@ -668,7 +668,7 @@ fn test_case_8() {
     }
 }
 }"#;
-    run_test_case("测试用例8 - 缺少opset_import且多余右括号", source);
+    run_test_case("测试用例8 - 缺少producer_version", source);
 }
 
 #[test]
