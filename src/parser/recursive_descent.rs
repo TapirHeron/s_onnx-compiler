@@ -83,17 +83,6 @@ impl Parser {
         }
     }
 
-    /// 预期标识符
-    // fn expect_ident(&mut self) -> Result<String, ParseError> {
-    //     match &self.current {
-    //         Token::Ident(s) => {
-    //             let val = s.clone();
-    //             self.next();
-    //             Ok(val)
-    //         }
-    //         _ => Err(ParseError::ExpectedIdent(self.current.clone(), self.pos())),
-    //     }
-    // }
 
     /// 预期数据类型 (int/float/string/bool)
     fn expect_data_type(&mut self) -> Result<String, ParseError> {

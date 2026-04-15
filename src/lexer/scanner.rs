@@ -58,10 +58,7 @@ impl Scanner {
     fn peek(&self) -> char {
         self.source[self.pos]
     }
-
-    // fn peek_next(&self) -> Option<char> {
-    //     self.source.get(self.pos + 1).copied()
-    // }
+    
 
     fn consume(&mut self) {
         if self.peek() == '\n' {

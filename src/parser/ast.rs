@@ -91,9 +91,16 @@ impl AST {
         }
     }
 
-    /// 格式化打印AST(缩进式)
+    /// 格式化打印AST(||--结合式)
     pub fn print(&self, indent: usize) {
-        let indent_str = "  ".repeat(indent);
+        let mut output = String::new();
+        self.print_to_string(&mut output, indent);
+        print!("{}", output);
+    }
+
+    /// 将AST输出到字符串
+    pub fn print_to_string(&self, output: &mut String, indent: usize) {
+        let indent_str = "|  ".repeat(indent);
         match self {
             AST::ModelProto {
                 ir_version,
@@ -105,69 +112,63 @@ impl AST {
                 graph,
                 opset_import,
             ..} => {
-                println!("{}ModelProto {{", indent_str);
-                println!("{}  ir_version: {}", indent_str, ir_version);
-                println!("{}  producer_name: \"{}\"", indent_str, producer_name);
-                println!("{}  producer_version: \"{}\"", indent_str, producer_version);
-                println!("{}  domain: \"{}\"", indent_str, domain);
-                println!("{}  model_version: \"{}\"", indent_str, model_version);
-                println!("{}  doc_string: \"{}\"", indent_str, doc_string);
-                graph.print(indent + 2);
-                opset_import.print(indent + 2);
-                println!("{}}}", indent_str);
+                output.push_str(&format!("{}|-- ModelProto\n", indent_str));
+                output.push_str(&format!("{}|-- ir_version: {}\n", indent_str, ir_version));
+                output.push_str(&format!("{}|-- producer_name: \"{}\"\n", indent_str, producer_name));
+                output.push_str(&format!("{}|-- producer_version: \"{}\"\n", indent_str, producer_version));
+                output.push_str(&format!("{}|-- domain: \"{}\"\n", indent_str, domain));
+                output.push_str(&format!("{}|-- model_version: {}\n", indent_str, model_version));
+                output.push_str(&format!("{}|-- doc_string: \"{}\"\n", indent_str, doc_string));
+                graph.print_to_string(output, indent + 1);
+                opset_import.print_to_string(output, indent + 1);
             }
             AST::Graph { name, nodes, inputs, outputs, initializers, .. } => {
-                println!("{}graph {{", indent_str);
-                println!("{}  name: \"{}\"", indent_str, name);
-                println!("{}  inputs [{}]:", indent_str, inputs.len());
-                inputs.iter().for_each(|i| i.print(indent + 3));
-                println!("{}  nodes [{}]:", indent_str, nodes.len());
-                nodes.iter().for_each(|n| n.print(indent + 3));
-                println!("{}  outputs [{}]:", indent_str, outputs.len());
-                outputs.iter().for_each(|o| o.print(indent + 3));
+                output.push_str(&format!("{}|-- graph\n", indent_str));
+                output.push_str(&format!("{}|-- name: \"{}\"\n", indent_str, name));
+                output.push_str(&format!("{}|-- inputs [{}]:\n", indent_str, inputs.len()));
+                inputs.iter().for_each(|i| i.print_to_string(output, indent + 1));
+                output.push_str(&format!("{}|-- nodes [{}]:\n", indent_str, nodes.len()));
+                nodes.iter().for_each(|n| n.print_to_string(output, indent + 1));
+                output.push_str(&format!("{}|-- outputs [{}]:\n", indent_str, outputs.len()));
+                outputs.iter().for_each(|o| o.print_to_string(output, indent + 1));
                 if let Some(init) = initializers {
-                    println!("{}  initializers [{}]:", indent_str, init.len());
-                    init.iter().for_each(|i| i.print(indent + 3));
+                    output.push_str(&format!("{}|-- initializers [{}]:\n", indent_str, init.len()));
+                    init.iter().for_each(|i| i.print_to_string(output, indent + 1));
                 }
-                println!("{}}}", indent_str);
             }
             AST::Node { op_type, name, inputs, outputs, attributes, .. } => {
-                println!("{}node {{", indent_str);
-                println!("{}  op_type: \"{}\"", indent_str, op_type);
-                println!("{}  name: \"{}\"", indent_str, name);
-                println!("{}  input: {:?}", indent_str, inputs);
-                println!("{}  output: {:?}", indent_str, outputs);
+                output.push_str(&format!("{}|-- node\n", indent_str));
+                output.push_str(&format!("{}|-- op_type: \"{}\"\n", indent_str, op_type));
+                output.push_str(&format!("{}|-- name: \"{}\"\n", indent_str, name));
+                output.push_str(&format!("{}|-- input: {:?}\n", indent_str, inputs));
+                output.push_str(&format!("{}|-- output: {:?}\n", indent_str, outputs));
                 if let Some(attrs) = attributes {
-                    println!("{}  attributes [{}]:", indent_str, attrs.len());
-                    attrs.iter().for_each(|a| a.print(indent + 3));
+                    output.push_str(&format!("{}|-- attributes [{}]:\n", indent_str, attrs.len()));
+                    attrs.iter().for_each(|a| a.print_to_string(output, indent + 1));
                 }
-                println!("{}}}", indent_str);
             }
             AST::ValueInfo { name, elem_type, shape, .. } => {
-                println!("{}ValueInfo {{", indent_str);
-                println!("{}  name: \"{}\"", indent_str, name);
-                println!("{}  elem_type: {}", indent_str, elem_type);
-                println!("{}  shape:", indent_str);
-                shape.iter().for_each(|d| d.print(indent + 3));
-                println!("{}}}", indent_str);
+                output.push_str(&format!("{}|-- ValueInfo\n", indent_str));
+                output.push_str(&format!("{}|-- name: \"{}\"\n", indent_str, name));
+                output.push_str(&format!("{}|-- elem_type: {}\n", indent_str, elem_type));
+                output.push_str(&format!("{}|-- shape:\n", indent_str));
+                shape.iter().for_each(|d| d.print_to_string(output, indent + 1));
             }
             AST::Dim { dim_value, dim_param, .. } => {
-                println!("{}dim {{", indent_str);
+                output.push_str(&format!("{}|-- dim\n", indent_str));
                 if let Some(v) = dim_value {
-                    println!("{}  dim_value: {}", indent_str, v);
+                    output.push_str(&format!("{}|-- dim_value: {}\n", indent_str, v));
                 }
                 if let Some(p) = dim_param {
-                    println!("{}  dim_param: \"{}\"", indent_str, p);
+                    output.push_str(&format!("{}|-- dim_param: \"{}\"\n", indent_str, p));
                 }
-                println!("{}}}", indent_str);
             }
             AST::OpsetImport { domain, version, ..} => {
-                println!("{}OpsetImport {{", indent_str);
-                println!("{}  domain: \"{}\"", indent_str, domain);
-                println!("{}  version: {}", indent_str, version);
-                println!("{}}}", indent_str);
+                output.push_str(&format!("{}|-- OpsetImport\n", indent_str));
+                output.push_str(&format!("{}|-- domain: \"{}\"\n", indent_str, domain));
+                output.push_str(&format!("{}|-- version: {}\n", indent_str, version));
             }
-            _ => println!("{}{:?}", indent_str, self),
+            _ => output.push_str(&format!("{}|-- {:?}\n", indent_str, self)),
         }
     }
 }

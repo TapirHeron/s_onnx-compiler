@@ -9,6 +9,8 @@ pub struct CodeGenerator {
     ast: AST,
     instructions: Vec<TAC>,
     temp_counter: usize,
+    // 建立原始名称到临时变量名的映射
+    name_to_temp: std::collections::HashMap<String, String>,
 }
 
 impl CodeGenerator {
@@ -18,6 +20,7 @@ impl CodeGenerator {
             ast,
             instructions: Vec::new(),
             temp_counter: 1,
+            name_to_temp: std::collections::HashMap::new(),
         }
     }
 
@@ -95,6 +98,9 @@ impl CodeGenerator {
                     })
                     .collect();
 
+                // 记录原始名称到临时变量的映射
+                self.name_to_temp.insert(name.clone(), result.clone());
+
                 self.instructions.push(TAC::Input {
                     result,
                     name: name.clone(),
@@ -117,6 +123,9 @@ impl CodeGenerator {
                 let result = self.gen_temp();
                 let shape = dims.clone();
 
+                // 记录原始名称到临时变量的映射
+                self.name_to_temp.insert(name.clone(), result.clone());
+
                 self.instructions.push(TAC::Initializer {
                     result,
                     name: name.clone(),
@@ -137,8 +146,14 @@ impl CodeGenerator {
     fn visit_node(&mut self, node: &AST) -> Result<(), CompilerError> {
         match node {
             AST::Node { op_type, inputs, outputs, attributes, .. } => {
-                // 操作数直接使用输入名称
-                let operands = inputs.clone();
+                // 将输入名称转换为对应的临时变量名
+                let operands: Vec<String> = inputs.iter()
+                    .map(|input_name| {
+                        self.name_to_temp.get(input_name)
+                            .cloned()
+                            .unwrap_or_else(|| input_name.clone())
+                    })
+                    .collect();
 
                 // 提取属性
                 let attrs: Option<Vec<(String, String)>> = attributes.as_ref().map(|attr_list| {
@@ -152,8 +167,12 @@ impl CodeGenerator {
                 });
 
                 // 为每个输出生成操作指令
-                for _output_name in outputs {
+                for output_name in outputs {
                     let result = self.gen_temp();
+                    
+                    // 记录输出名称到临时变量的映射
+                    self.name_to_temp.insert(output_name.clone(), result.clone());
+                    
                     self.instructions.push(TAC::Operation {
                         result,
                         op_type: op_type.clone(),
