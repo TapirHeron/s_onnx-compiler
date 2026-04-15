@@ -5,13 +5,13 @@ use crate::parser::AST;
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     // 节点名称 -> 节点AST
-    nodes: HashMap<String, AST>,
+    pub nodes: HashMap<String, AST>,
     // 张量名称 -> 类型+形状
-    tensors: HashMap<String, (String, Vec<AST>)>,
+    pub tensors: HashMap<String, (String, Vec<AST>)>,
     // 初始化器名称 -> 类型+维度
-    initializers: HashMap<String, (String, Vec<i64>)>,
+    pub initializers: HashMap<String, (String, Vec<i64>)>,
     // 输出张量名称(确保唯一)
-    output_tensors: HashSet<String>,
+    pub output_tensors: HashSet<String>,
 }
 
 impl SymbolTable {

@@ -28,6 +28,11 @@ impl SemanticChecker {
         Ok(self.ast.clone())
     }
 
+    /// 获取当前符号表的状态字符串（用于测试输出）
+    pub fn get_symbol_table_info(&self) -> String {
+        self.format_symbol_table()
+    }
+
     /// 递归遍历AST进行检查
     fn visit_ast(&mut self, ast: &AST) {
         match ast {
@@ -37,16 +42,19 @@ impl SemanticChecker {
                 for input in inputs {
                     self.visit_value_info(input, false);
                 }
+
                 // 2. 插入所有初始化器
                 if let Some(inits) = initializers {
                     for init in inits {
                         self.visit_initializer(init);
                     }
                 }
+
                 // 3. 插入所有输出张量
                 for output in outputs {
                     self.visit_value_info(output, true);
                 }
+
                 // 4. 检查所有节点
                 for node in nodes {
                     self.visit_node(node);
@@ -68,6 +76,38 @@ impl SemanticChecker {
                 self.errors.push(SemanticError::NamingConflict(e));
             }
         }
+    }
+
+
+
+    /// 格式化符号表为字符串
+    fn format_symbol_table(&self) -> String {
+        let mut output = String::new();
+        output.push_str("[符号表状态]\n");
+        output.push_str(&format!("  张量({}个):\n", self.sym_table.tensors.len()));
+        for (name, (dtype, shape)) in &self.sym_table.tensors {
+            let shape_str = if shape.is_empty() {
+                "[]".to_string()
+            } else {
+                format!("{:?}", shape)
+            };
+            output.push_str(&format!("    - {} : {} {}\n", name, dtype, shape_str));
+        }
+        
+        output.push_str(&format!("  初始化器({}个):\n", self.sym_table.initializers.len()));
+        for (name, (dtype, dims)) in &self.sym_table.initializers {
+            output.push_str(&format!("    - {} : {} {:?}\n", name, dtype, dims));
+        }
+        
+        output.push_str(&format!("  节点({}个):\n", self.sym_table.nodes.len()));
+        for name in self.sym_table.nodes.keys() {
+            output.push_str(&format!("    - {}\n", name));
+        }
+        
+        output.push_str(&format!("  输出张量({}个): {:?}\n", 
+                 self.sym_table.output_tensors.len(), 
+                 self.sym_table.output_tensors));
+        output
     }
 
     /// 检查初始化器

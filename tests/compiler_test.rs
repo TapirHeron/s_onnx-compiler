@@ -26,6 +26,8 @@ fn run_test_case(test_name: &str, source: &str) {
             }
             Err(e) => {
                 output.push_str(&format!("词法分析错误: {}\n", e));
+                // 控制台输出
+                println!("{}", output);
                 save_output(test_name, &output);
                 return;
             }
@@ -51,6 +53,13 @@ fn run_test_case(test_name: &str, source: &str) {
             match checker.check() {
                 Ok(checked_ast) => {
                     output.push_str("语义分析成功!\n");
+                    
+                    // 获取并保存符号表状态
+                    let symbol_table_info = checker.get_symbol_table_info();
+                    if !symbol_table_info.is_empty() {
+                        output.push_str("\n--- 最终符号表状态 ---\n");
+                        output.push_str(&symbol_table_info);
+                    }
 
                     // 4. 中间代码生成
                     output.push_str("\n【中间代码生成模块】\n");
@@ -78,6 +87,8 @@ fn run_test_case(test_name: &str, source: &str) {
         }
     }
     
+    // 控制台输出
+    println!("{}", output);
     save_output(test_name, &output);
 }
 
@@ -190,7 +201,7 @@ domain = "ex"
     version=15
 }
 }"#;
-    run_test_case("测试用例1 - Pad操作符模型", source);
+    run_test_case("测试用例1", source);
 }
 
 #[test]
@@ -255,7 +266,7 @@ initializer{
         version = 11
     }
 }"#;
-    run_test_case("测试用例2 - MatMul带初始化器", source);
+    run_test_case("测试用例2", source);
 }
 
 #[test]
@@ -334,7 +345,7 @@ doc_string = "This is testmodel3."
         version = 11
     }
 }"#;
-    run_test_case("测试用例3 - 多输入Mul操作符", source);
+    run_test_case("测试用例3", source);
 }
 
 #[test]
@@ -412,7 +423,7 @@ doc_string = "This is testmodel4."
         version = 11
     }
 }"#;
-    run_test_case("测试用例4 - Conv卷积操作符", source);
+    run_test_case("测试用例4", source);
 }
 
 #[test]
@@ -469,7 +480,7 @@ doc_string = "This is testmodel5."
         version = 11
     }
 }"#;
-    run_test_case("测试用例5 - 自定义操作符带字符串属性", source);
+    run_test_case("测试用例5", source);
 }
 
 #[test]
@@ -548,7 +559,7 @@ doc_string = "This is testmodel6."
         version = 11
     }
 }"#;
-    run_test_case("测试用例6 - 多输出Add操作符", source);
+    run_test_case("测试用例6", source);
 }
 
 #[test]
@@ -610,7 +621,7 @@ fn test_case_7() {
     }
     keyword = "value"
 }"#;
-    run_test_case("测试用例7 - 缺少关键字", source);
+    run_test_case("测试用例7", source);
 }
 
 #[test]
@@ -668,7 +679,7 @@ fn test_case_8() {
     }
 }
 }"#;
-    run_test_case("测试用例8 - 缺少producer_version", source);
+    run_test_case("测试用例8", source);
 }
 
 #[test]
@@ -752,7 +763,7 @@ output{
         version = 11
     }
 }"#;
-    run_test_case("测试用例9 - 节点重名和类型不匹配", source);
+    run_test_case("测试用例9", source);
 }
 
 #[test]
@@ -778,5 +789,5 @@ doc_string = "This is testmodel10."
         version = 11
     }
 }"#;
-    run_test_case("测试用例10 - 缺少输入输出定义", source);
+    run_test_case("测试用例10", source);
 }
